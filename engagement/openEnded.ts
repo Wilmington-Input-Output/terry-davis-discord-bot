@@ -7,13 +7,13 @@ export async function sendOpenEndedQuestion(channel: TextChannel | NewsChannel |
     const randomQuestionIndex = crypto.randomInt(0, openEndedEngagementQuestions.length);
     const question = openEndedEngagementQuestions[randomQuestionIndex];
 
-    if (!('guild' in channel) || !channel.guild) {
+    const tagPeopleThisTime = Math.random() < 0.5
+
+    if (!('guild' in channel) || !channel.guild || !tagPeopleThisTime) {
         await channel.send(`
 Hey nerds
 
 ${question}
-
-What do you think?
         `.trim());
         return
     }
@@ -22,11 +22,9 @@ What do you think?
     const memberTags = randomMembers.map(id => `<@${id}>`).join(' ');
     
     await channel.send(`
-Hey nerds
+Hey ${memberTags} (randomly selected nerds) !!!
 
 ${question}
-
-${memberTags} - what do you think?`.trim());
+`.trim())
 
 }
-

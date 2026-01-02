@@ -46,7 +46,6 @@ Dont see your answer? Share with us!
 
     collector.on('collect', async (reaction, user) => {
         try {
-          console.log("Got reaction:", reaction.emoji.name, " from user:", user.displayName)
             if (!reactingUsers.has(user.id)) {
                 reactingUsers.add(user.id);
 
