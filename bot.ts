@@ -1,9 +1,10 @@
 import { CronJob } from 'cron'
 import dotenv from 'dotenv-safe'
-import { Client, Events, IntentsBitField, MessageReaction, User } from 'discord.js';
+import { Client, Events, IntentsBitField } from 'discord.js';
 import { replies } from './messages/replies'
-import { engagementQuestions } from './messages/engagement'
-import crypto from "crypto";
+import { isGuildTextChannel } from './utils/channels'
+import { sendOpenEndedQuestion } from './engagement/openEnded'
+import { sendMultipleChoiceQuestion } from './engagement/multipleChoice'
 
 dotenv.config({
     example: './.env.example'
@@ -15,13 +16,13 @@ const client = new Client({
     intents: [
         IntentsBitField.Flags.Guilds,
         IntentsBitField.Flags.GuildMessages,
-        IntentsBitField.Flags.MessageContent
+        IntentsBitField.Flags.MessageContent,
+        IntentsBitField.Flags.GuildMembers,
+        IntentsBitField.Flags.GuildMessageReactions
     ]
 });
 
 const token = process.env.TOKEN;
-
-var lastEngagementIndices: number[] = [];
 
 function getRandomReply(): string {
     const randomIndex = Math.floor(Math.random() * replies.length);
@@ -37,54 +38,25 @@ client.once(Events.ClientReady, async () => {
     console.log('Bot is online!');
     const channel = client.channels.cache.get(MAIN_CHANNEL_ID)
 
-    if (channel && channel.isTextBased()) {
+    if (channel && channel.isTextBased() && channel.isSendable()) {
       await channel.send(getRandomReply());
     }
-
-    console.log('time now is:', new Date().toLocaleTimeString())
 
     new CronJob(
         '0 29 18 * * 2,4,6', // Every Tuesday, Thursday, and Saturday at 6:29 PM CST
         async () => {
-            console.log('Running cronjob....')
             // Fetch the channel using the saved channel ID
-            const channel = client.channels.cache.get(MAIN_CHANNEL_ID)
+            const channel = client.channels.cache.get(MAIN_CHANNEL_ID);
             
-            if (channel && channel.isTextBased()) {
-                console.log('Channel found. Sending message...')
-                const { question, answers } = engagementQuestions[getRandomEngagementIndex()]
-                const message = await channel.send(`
-Hey nerds
-
-${question}
-
-${answers.map((answer, index) => `${reactionEmojis[index]} ${answer}`).join('\n')}
-
-Dont see your answer? Share with us!
-                    `.trim()
-                )
-                for (const reaction of reactionEmojis) {
-                    await message.react(reaction)
+            if (channel && channel.isTextBased() && channel.isSendable() && isGuildTextChannel(channel)) {
+                // Randomly choose between multiple choice or open-ended question
+                const useOpenEnded = Math.random() < 0.5;
+                
+                if (useOpenEnded) {
+                    await sendOpenEndedQuestion(channel);
+                } else {
+                    await sendMultipleChoiceQuestion(channel);
                 }
-
-                const filter = (reaction: MessageReaction, user: User) => {
-                  return !user.bot && reactionEmojis.includes(reaction.emoji.name || '');
-                }
-
-                const collector = message.createReactionCollector({ filter, time: 48 * 60 * 60 * 1000 }); // 48 hours
-                const reactingUsers: Set<string> = new Set();
-
-                collector.on('collect', async (reaction, user) => {
-                  if (!reactingUsers.has(user.id)) {
-                    reactingUsers.add(user.id);
-
-                    if (reactingUsers.size === 2) {
-                      const answerChosen = answers[reactionEmojis.indexOf(reaction.emoji.name as string)] ?? 'your answer'
-                      await channel.send(`Nice <@${user.id}>! Can you share why you chose ${answerChosen}?`);
-                      collector.stop()
-                    }
-                  }
-                });
             } else {
                 console.log('Channel not found or the bot does not have access to it.');
             }
@@ -122,13 +94,26 @@ client.on(Events.ShardError, (err) => {
     console.error(now.toLocaleDateString(), 'Got shared error', err)
 })
 
-client.on(Events.MessageCreate, message => {
+client.on(Events.MessageCreate, async message => {
    if (message.content === '!terry') {
        message.channel.send(getRandomReply());
    }
 
    if (message.content === '!meetup') {
        message.channel.send('https://wilmingtonio.org/')
+   }
+
+   if (message.content === '!test' && message.author.id === '185862369174487040') {
+       const channel = message.channel;
+       if (channel && channel.isTextBased() && channel.isSendable() && isGuildTextChannel(channel)) {
+           const useOpenEnded = Math.random() < 0.5;
+           
+           if (useOpenEnded) {
+               await sendOpenEndedQuestion(channel);
+           } else {
+               await sendMultipleChoiceQuestion(channel);
+           }
+       }
    }
 
    if (containsCIA(message.content)) {
@@ -144,19 +129,5 @@ client.on(Events.MessageCreate, message => {
    }
 });
 
-function getRandomEngagementIndex(): number {
-    if (lastEngagementIndices.length >= engagementQuestions.length) {
-        lastEngagementIndices = []
-    }
-
-    let engagementIndex = crypto.randomInt(0, engagementQuestions.length);
-    while (lastEngagementIndices.includes(engagementIndex)) {
-        engagementIndex = crypto.randomInt(0, engagementQuestions.length);
-    }
-
-    lastEngagementIndices.push(engagementIndex)
-
-    return engagementIndex;
-}
 
 client.login(token)
