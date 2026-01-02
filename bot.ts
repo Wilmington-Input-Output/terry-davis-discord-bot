@@ -33,7 +33,6 @@ function containsCIA(str: string): boolean {
    return /\bCIA\b/i.test(str);
 }
 
-const reactionEmojis = ['🇦', '🇧', '🇨', '🇩']
 client.once(Events.ClientReady, async () => {
     console.log('Bot is online!');
     const channel = client.channels.cache.get(MAIN_CHANNEL_ID)
