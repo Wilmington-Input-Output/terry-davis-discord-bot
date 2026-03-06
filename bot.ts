@@ -74,7 +74,7 @@ client.once(Events.ClientReady, async () => {
             await channel.send(`
 Hey friends, **the BEST way to support the meetup is to ATTEND our events** 😎
 
-If you WANT to support is other ways, please see our website: https://wilmingtonio.org/
+If you WANT to support is other ways, please see our NEW supporter link: https://buymeacoffee.com/wilmingtonio
 `)
           }
         },
