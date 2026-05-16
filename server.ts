@@ -5,6 +5,7 @@ dotenv.config({
 })
 
 import Fastify from 'fastify'
+import bankWebhook from './webhooks/bank'
 import {
   startDiscordBot,
   stopDiscordBot,
@@ -44,6 +45,7 @@ app.addHook('onClose', async () => {
 })
 
 async function main(): Promise<void> {
+  await app.register(bankWebhook)
   await app.listen({ port, host: '0.0.0.0' })
   await startDiscordBot()
 }

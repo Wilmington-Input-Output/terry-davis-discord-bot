@@ -25,6 +25,9 @@ jobs:
       run: |
         echo "TOKEN=${{ secrets.TOKEN }}" >> .env
         echo "HOME_CHANNEL_ID=${{ secrets.TOKEN }}" >> .env
+        echo "BANK_TOKEN=${{ secrets.BANK_TOKEN }}" >> .env
+        echo "BANK_WEBHOOK_SECRET=${{ secrets.BANK_WEBHOOK_SECRET }}" >> .env
+        echo "PORT=${{ secrets.PORT }}" >> .env
       shell: bash
 
     - name: Restart pm2 process
