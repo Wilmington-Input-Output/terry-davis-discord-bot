@@ -5,8 +5,6 @@ import { isGuildTextChannel } from './utils/channels'
 import { sendOpenEndedQuestion } from './engagement/openEnded'
 import { sendMultipleChoiceQuestion } from './engagement/multipleChoice'
 
-const MAIN_CHANNEL_ID = '862860519900053533'
-
 let client: Client | undefined
 let engagementCron: CronJob | undefined
 let supportCron: CronJob | undefined
@@ -29,6 +27,14 @@ export async function startDiscordBot(): Promise<void> {
     )
   }
 
+  const homeChannelId = process.env.HOME_CHANNEL_ID
+
+  if (!homeChannelId) {
+    throw new Error(
+      'HOME_CHANNEL_ID env var is required to start the Discord bot',
+    )
+  }
+
   client = new Client({
     intents: [
       IntentsBitField.Flags.Guilds,
@@ -41,7 +47,7 @@ export async function startDiscordBot(): Promise<void> {
 
   client.once(Events.ClientReady, async () => {
     console.log('Bot is online!')
-    const channel = client?.channels.cache.get(MAIN_CHANNEL_ID)
+    const channel = client?.channels.cache.get(homeChannelId)
 
     if (channel && channel.isTextBased() && channel.isSendable()) {
       // stop sending messages on restart
@@ -51,7 +57,7 @@ export async function startDiscordBot(): Promise<void> {
     engagementCron = new CronJob(
       '0 29 18 * * 2,4,6',
       async () => {
-        const channel = client?.channels.cache.get(MAIN_CHANNEL_ID)
+        const channel = client?.channels.cache.get(homeChannelId)
 
         if (
           channel &&
@@ -79,7 +85,7 @@ export async function startDiscordBot(): Promise<void> {
     supportCron = new CronJob(
       '0 0 12 * * 0',
       async () => {
-        const channel = client?.channels.cache.get(MAIN_CHANNEL_ID)
+        const channel = client?.channels.cache.get(homeChannelId)
 
         if (channel && channel.isTextBased() && 'send' in channel) {
           await channel.send(
@@ -165,4 +171,8 @@ export async function stopDiscordBot(): Promise<void> {
     await client.destroy()
     client = undefined
   }
+}
+
+export function getClient(): Client | undefined {
+  return client
 }

@@ -3,8 +3,13 @@ import type { FastifyPluginAsync } from 'fastify'
 import fastifyRawBody from 'fastify-raw-body'
 import { verifyBankSignature } from './verifySignature'
 import { getTransactionDetails } from '../../lib/bank'
+import { announceBankTransaction } from '../../discordBot/announce'
 
 const SIGNATURE_HEADER = 'mercury-signature'
+
+const ZAC_COUNTERPARTY_ALIASES = new Set<string>([
+  'Mercury - Checking ••7255',
+])
 
 type WebhookEvent = {
   id?: string
@@ -16,6 +21,29 @@ type WebhookEvent = {
     bankDescription?: string | null
     status?: string
   }
+}
+
+function resolveCounterpartyName(
+  tx:
+    | Awaited<ReturnType<typeof getTransactionDetails>>
+    | undefined,
+): string | null {
+  if (!tx) {
+    return null
+  }
+
+  if (tx.kind === 'internalTransfer') {
+    return 'Zac'
+  }
+
+  if (
+    tx.counterpartyName &&
+    ZAC_COUNTERPARTY_ALIASES.has(tx.counterpartyName)
+  ) {
+    return 'Zac'
+  }
+
+  return tx.counterpartyName
 }
 
 const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
@@ -83,7 +111,6 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
 
       const status = event.mergePatch?.status
       const amount = event.mergePatch?.amount
-      const bankDescription = event.mergePatch?.bankDescription
 
       if (status !== 'pending' && status !== 'sent') {
         return { ok: true }
@@ -93,8 +120,12 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
         return { ok: true }
       }
 
+      let tx:
+        | Awaited<ReturnType<typeof getTransactionDetails>>
+        | undefined
+
       if (event.resourceId) {
-        const tx = await getTransactionDetails(event.resourceId ?? '')
+        tx = await getTransactionDetails(event.resourceId ?? '')
         if (tx.accountId !== process.env.BANK_ACCOUNT_ID) {
           return { ok: true }
         }
@@ -102,10 +133,23 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
 
       const direction = amount >= 0 ? 'receive' : 'spend'
       const magnitude = Math.abs(amount).toFixed(2)
+      const counterpartyName = resolveCounterpartyName(tx)
 
-      console.log(
-        `Bank transaction (${status}) ${direction} $${magnitude} — ${bankDescription ?? '(no description)'}`,
-      )
+      void announceBankTransaction(
+        {
+          direction,
+          magnitude,
+          counterpartyName,
+        },
+        request.log,
+      ).catch((err) => {
+        request.log.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'bank announcement threw unexpectedly',
+        )
+      })
 
       return { ok: true }
     },

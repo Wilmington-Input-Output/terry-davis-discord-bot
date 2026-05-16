@@ -5,6 +5,8 @@ export const getTransactionDetails = async (
 ): Promise<{
   amount: number
   accountId: string
+  kind: string
+  counterpartyName: string | null
 }> => {
   const res = await axios.get(`https://api.mercury.com/api/v1/transaction/${resourceId}`, {
     headers: {
