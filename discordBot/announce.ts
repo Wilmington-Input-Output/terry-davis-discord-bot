@@ -64,7 +64,7 @@ function formatDonationMessage(
 ): string {
   const supporterTail =
     input.supporterName && input.supporterName.trim().length > 0
-      ? ` from *${input.supporterName}*`
+      ? ` from ${input.supporterName}`
       : ''
 
   if (input.kind === 'donation') {
