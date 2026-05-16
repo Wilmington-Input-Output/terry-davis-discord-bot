@@ -19,7 +19,7 @@ if (!Number.isFinite(port)) {
   )
 }
 
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: false })
 
 let shuttingDown = false
 
