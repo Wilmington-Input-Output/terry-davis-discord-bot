@@ -44,7 +44,8 @@ export async function startDiscordBot(): Promise<void> {
     const channel = client?.channels.cache.get(MAIN_CHANNEL_ID)
 
     if (channel && channel.isTextBased() && channel.isSendable()) {
-      await channel.send(getRandomReply())
+      // stop sending messages on restart
+      // await channel.send(getRandomReply())
     }
 
     engagementCron = new CronJob(
