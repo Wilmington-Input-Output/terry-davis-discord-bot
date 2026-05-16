@@ -93,7 +93,7 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
         return { ok: true }
       }
 
-      if (!event.resourceId) {
+      if (event.resourceId) {
         const tx = await getTransactionDetails(event.resourceId ?? '')
         if (tx.accountId !== process.env.BANK_ACCOUNT_ID) {
           return { ok: true }
