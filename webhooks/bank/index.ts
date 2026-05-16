@@ -1,6 +1,8 @@
+import crypto from 'crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import fastifyRawBody from 'fastify-raw-body'
 import { verifyBankSignature } from './verifySignature'
+import { getTransactionDetails } from '../../lib/bank'
 
 const SIGNATURE_HEADER = 'mercury-signature'
 
@@ -18,17 +20,10 @@ type WebhookEvent = {
 
 const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
   const secret = process.env.BANK_WEBHOOK_SECRET
-  const resourceId = process.env.BANK_RESOURCE_ID
 
   if (!secret) {
     throw new Error(
       'BANK_WEBHOOK_SECRET env var must be set to register the bank webhook route',
-    )
-  }
-
-  if (!resourceId) {
-    throw new Error(
-      'BANK_RESOURCE_ID env var must be set to register the bank webhook route',
     )
   }
 
@@ -62,8 +57,15 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
             reason: verification.reason,
             contentType: request.headers['content-type'],
             rawBodyLength: rawBody.length,
+            rawBodySha256: crypto
+              .createHash('sha256')
+              .update(rawBody)
+              .digest('hex'),
             hasSignatureHeader: typeof headerValue === 'string',
             signatureHeaderLength: headerValue?.length ?? 0,
+            timestamp: verification.timestamp,
+            expectedSignature: verification.expected,
+            computedSignature: verification.computed,
           },
           'bank webhook rejected',
         )
@@ -71,10 +73,6 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       const event = request.body as WebhookEvent
-
-      if (event?.resourceId !== resourceId) {
-        return { ok: true }
-      }
 
       if (
         event?.resourceType !== 'transaction' ||
@@ -93,6 +91,13 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
 
       if (typeof amount !== 'number') {
         return { ok: true }
+      }
+
+      if (!event.resourceId) {
+        const tx = await getTransactionDetails(event.resourceId ?? '')
+        if (tx.accountId !== process.env.BANK_ACCOUNT_ID) {
+          return { ok: true }
+        }
       }
 
       const direction = amount >= 0 ? 'receive' : 'spend'

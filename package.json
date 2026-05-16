@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/dotenv-safe": "^8.1.5",
     "@types/node": "^20.10.5",
+    "axios": "^1.16.1",
     "cron": "^3.1.6",
     "discord.js": "^14.14.1",
     "dotenv-safe": "^8.2.0",
