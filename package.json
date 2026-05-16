@@ -2,9 +2,9 @@
   "name": "terry-davis-discord-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "discordBot/index.ts",
+  "main": "server.ts",
   "scripts": {
-    "start": "tsx discordBot/index.ts"
+    "start": "tsx server.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,7 @@
     "cron": "^3.1.6",
     "discord.js": "^14.14.1",
     "dotenv-safe": "^8.2.0",
+    "fastify": "^5.8.5",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
