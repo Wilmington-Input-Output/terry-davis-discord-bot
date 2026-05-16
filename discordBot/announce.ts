@@ -16,7 +16,27 @@ export type BankTransactionAnnouncement = {
   counterpartyName: string | null | undefined
 }
 
-function formatMessage(
+export type DonationAnnouncement =
+  | {
+      kind: 'donation'
+      formattedAmount: string
+      supporterName: string | null | undefined
+    }
+  | {
+      kind: 'recurring'
+      formattedAmount: string
+      periodLabel: string
+      supporterName: string | null | undefined
+    }
+  | {
+      kind: 'membership'
+      formattedAmount: string
+      periodLabel: string
+      tierName: string | null | undefined
+      supporterName: string | null | undefined
+    }
+
+function formatBankMessage(
   input: BankTransactionAnnouncement,
 ): string {
   const isReceive = input.direction === 'receive'
@@ -39,8 +59,43 @@ function formatMessage(
   return `${head} *${input.counterpartyName}*`
 }
 
-export async function announceBankTransaction(
-  input: BankTransactionAnnouncement,
+function formatDonationMessage(
+  input: DonationAnnouncement,
+): string {
+  const supporterTail =
+    input.supporterName && input.supporterName.trim().length > 0
+      ? ` from *${input.supporterName}*`
+      : ''
+
+  if (input.kind === 'donation') {
+    return (
+      `💰 **${ORG_NAME}** received a **${input.formattedAmount}**`
+      + ` donation${supporterTail}!!!!!!!`
+    )
+  }
+
+  if (input.kind === 'recurring') {
+    return (
+      `💰 **${ORG_NAME}** received a new`
+      + ` **${input.formattedAmount}/${input.periodLabel}**`
+      + ` recurring donation${supporterTail}!!!!!!!`
+    )
+  }
+
+  const tierFragment =
+    input.tierName && input.tierName.trim().length > 0
+      ? ` *${input.tierName}*`
+      : ''
+
+  return (
+    `💰 **${ORG_NAME}** received a new`
+    + ` **${input.formattedAmount}/${input.periodLabel}**`
+    + `${tierFragment} membership${supporterTail}!!!!!!!`
+  )
+}
+
+async function postHomeChannelMessage(
+  content: string,
   logger: AnnounceLogger,
 ): Promise<void> {
   const client = getClient()
@@ -48,7 +103,7 @@ export async function announceBankTransaction(
   if (!client || !client.isReady()) {
     logger.warn(
       { reason: 'client-not-ready' },
-      'bank announcement skipped',
+      'home channel post skipped',
     )
     return
   }
@@ -58,7 +113,7 @@ export async function announceBankTransaction(
   if (!homeChannelId) {
     logger.warn(
       { reason: 'missing-home-channel-id' },
-      'bank announcement skipped',
+      'home channel post skipped',
     )
     return
   }
@@ -76,20 +131,37 @@ export async function announceBankTransaction(
         reason: 'home-channel-not-sendable',
         channelId: homeChannelId,
       },
-      'bank announcement skipped',
+      'home channel post skipped',
     )
     return
   }
 
   try {
-    await channel.send(formatMessage(input))
+    await channel.send(content)
   } catch (err) {
     logger.warn(
       {
         reason: 'send-failed',
         err: err instanceof Error ? err.message : String(err),
       },
-      'bank announcement failed',
+      'home channel post failed',
     )
   }
+}
+
+export async function announceBankTransaction(
+  input: BankTransactionAnnouncement,
+  logger: AnnounceLogger,
+): Promise<void> {
+  await postHomeChannelMessage(formatBankMessage(input), logger)
+}
+
+export async function announceDonation(
+  input: DonationAnnouncement,
+  logger: AnnounceLogger,
+): Promise<void> {
+  await postHomeChannelMessage(
+    formatDonationMessage(input),
+    logger,
+  )
 }

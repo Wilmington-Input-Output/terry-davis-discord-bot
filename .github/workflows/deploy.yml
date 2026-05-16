@@ -29,6 +29,7 @@ jobs:
         echo "BANK_WEBHOOK_SECRET=${{ secrets.BANK_WEBHOOK_SECRET }}" >> .env
         echo "BANK_TOKEN=${{ secrets.BANK_TOKEN }}" >> .env
         echo "BANK_ACCOUNT_ID=${{ secrets.BANK_ACCOUNT_ID }}" >> .env
+        echo "DONATE_WEBHOOK_SECRET=${{ secrets.DONATE_WEBHOOK_SECRET }}" >> .env
         echo "PORT=${{ secrets.PORT }}" >> .env
       shell: bash
 
