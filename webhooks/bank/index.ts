@@ -17,11 +17,17 @@ type WebhookEvent = {
 
 const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
   const secret = process.env.BANK_WEBHOOK_SECRET
+  const resourceId = process.env.BANK_RESOURCE_ID
 
   if (!secret) {
     throw new Error(
-      'BANK_WEBHOOK_SECRET env var must be set to register ' +
-      'the bank webhook route',
+      'BANK_WEBHOOK_SECRET env var must be set to register the bank webhook route',
+    )
+  }
+
+  if (!resourceId) {
+    throw new Error(
+      'BANK_RESOURCE_ID env var must be set to register the bank webhook route',
     )
   }
 
@@ -64,6 +70,10 @@ const bankWebhookPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     const event = request.body as WebhookEvent
+
+    if (event?.resourceId !== resourceId) {
+      return { ok: true }
+    }
 
     if (
       event?.resourceType !== 'transaction' ||

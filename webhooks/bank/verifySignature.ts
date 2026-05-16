@@ -22,9 +22,28 @@ export function verifyBankSignature(
     return { ok: false, reason: 'missing-header' }
   }
 
-  const parts = signatureHeader.split(',')
-  const timestampRaw = parts[0]?.split('=')[1]
-  const signatureHex = parts[1]?.split('=')[1]
+  let timestampRaw: string | undefined
+  let signatureHex: string | undefined
+
+  for (const part of signatureHeader.split(',')) {
+    const trimmed = part.trim()
+    const eqIndex = trimmed.indexOf('=')
+
+    if (eqIndex === -1) {
+      continue
+    }
+
+    const key = trimmed.slice(0, eqIndex)
+    const value = trimmed.slice(eqIndex + 1)
+
+    if (key === 't') {
+      timestampRaw = value
+    }
+
+    if (key === 'v1') {
+      signatureHex = value
+    }
+  }
 
   if (!timestampRaw || !signatureHex) {
     return { ok: false, reason: 'malformed-header' }
