@@ -20,6 +20,25 @@ if (!Number.isFinite(port)) {
 
 const app = Fastify({ logger: true })
 
+let shuttingDown = false
+
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  if (shuttingDown) {
+    return
+  }
+
+  shuttingDown = true
+  console.log(`Received ${signal}, shutting down`)
+
+  try {
+    await app.close()
+    process.exit(0)
+  } catch (err) {
+    console.error('Error during shutdown', err)
+    process.exit(1)
+  }
+}
+
 app.addHook('onClose', async () => {
   await stopDiscordBot()
 })
@@ -43,3 +62,6 @@ main().catch(async (err) => {
 
   process.exit(1)
 })
+
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
