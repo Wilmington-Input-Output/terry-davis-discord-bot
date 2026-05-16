@@ -24,7 +24,7 @@ jobs:
     - name: Create .env file
       run: |
         echo "TOKEN=${{ secrets.TOKEN }}" >> .env
-        echo "HOME_CHANNEL_ID=${{ secrets.TOKEN }}" >> .env
+        echo "HOME_CHANNEL_ID=862860519900053533" >> .env
         echo "BANK_TOKEN=${{ secrets.BANK_TOKEN }}" >> .env
         echo "BANK_WEBHOOK_SECRET=${{ secrets.BANK_WEBHOOK_SECRET }}" >> .env
         echo "BANK_TOKEN=${{ secrets.BANK_TOKEN }}" >> .env
@@ -34,4 +34,4 @@ jobs:
       shell: bash
 
     - name: Restart pm2 process
-      run: pm2 restart terry-davis-discord-bot
+      run: pm2 restart terry-davis-discord-bot --silent
