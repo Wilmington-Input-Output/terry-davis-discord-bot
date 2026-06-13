@@ -18,6 +18,16 @@ function containsCIA(str: string): boolean {
   return /\bCIA\b/i.test(str)
 }
 
+function buildWelcomeMessage(userId: string): string {
+  return `Welcome <@${userId}>! 👋👋
+
+What brings you to our Discord?
+
+Are you a student? Are you into apps, cybersecurity, linux, c++? just learning? new to town?
+
+Please introduce yourself! 😎`
+}
+
 export async function startDiscordBot(): Promise<void> {
   const token = process.env.TOKEN
 
@@ -141,6 +151,22 @@ If you WANT to support is other ways, please see our NEW supporter link: https:/
       }
     }
 
+    if (
+      message.content === '!testwelcome' &&
+      message.author.id === '185862369174487040'
+    ) {
+      const channel = message.channel
+
+      if (
+        channel &&
+        channel.isTextBased() &&
+        channel.isSendable() &&
+        isGuildTextChannel(channel)
+      ) {
+        await channel.send(buildWelcomeMessage(message.author.id))
+      }
+    }
+
     if (containsCIA(message.content)) {
       message.react('👀')
     }
@@ -155,6 +181,32 @@ If you WANT to support is other ways, please see our NEW supporter link: https:/
       )
     ) {
       message.react('🇦🇱')
+    }
+  })
+
+  client.on(Events.GuildMemberAdd, async (member) => {
+    if (member.user.bot) {
+      return
+    }
+
+    const channel = client?.channels.cache.get(homeChannelId)
+
+    if (
+      !channel ||
+      !channel.isTextBased() ||
+      !channel.isSendable() ||
+      !isGuildTextChannel(channel)
+    ) {
+      console.log(
+        'Welcome skipped: home channel not found or not sendable.',
+      )
+      return
+    }
+
+    try {
+      await channel.send(buildWelcomeMessage(member.id))
+    } catch (err) {
+      console.error('Failed to send welcome message', err)
     }
   })
 
