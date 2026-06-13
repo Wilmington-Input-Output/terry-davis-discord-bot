@@ -6,12 +6,9 @@ export async function sendOpenEndedQuestion(channel: TextChannel | NewsChannel |
     const randomQuestionIndex = crypto.randomInt(0, openEndedEngagementQuestions.length);
     const question = openEndedEngagementQuestions[randomQuestionIndex];
 
-    if (!('guild' in channel) || !channel.guild) {
-        await channel.send(`
+    await channel.send(`
 Hey nerds - anyone know the answer?
 
 ${question}
-        `.trim());
-        return
-    }
+    `.trim());
 }
