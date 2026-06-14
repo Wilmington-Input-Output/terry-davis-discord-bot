@@ -4,10 +4,16 @@ import { replies } from './messages/replies'
 import { isGuildTextChannel } from './utils/channels'
 import { sendOpenEndedQuestion } from './engagement/openEnded'
 import { sendMultipleChoiceQuestion } from './engagement/multipleChoice'
+import {
+  sendEventReminder,
+  sendUpcomingEventsAnnouncement,
+} from './events/eventReminder'
 
 let client: Client | undefined
 let engagementCron: CronJob | undefined
 let supportCron: CronJob | undefined
+let reminderCron: CronJob | undefined
+let digestCron: CronJob | undefined
 
 function getRandomReply(): string {
   const randomIndex = Math.floor(Math.random() * replies.length)
@@ -52,6 +58,7 @@ export async function startDiscordBot(): Promise<void> {
       IntentsBitField.Flags.MessageContent,
       IntentsBitField.Flags.GuildMembers,
       IntentsBitField.Flags.GuildMessageReactions,
+      IntentsBitField.Flags.GuildScheduledEvents,
     ],
   })
 
@@ -107,6 +114,62 @@ If you WANT to support is other ways, please see our NEW supporter link: https:/
       },
       null,
       true,
+    )
+
+    reminderCron = new CronJob(
+      '0 0 11 * * *',
+      async () => {
+        const channel = client?.channels.cache.get(homeChannelId)
+
+        if (
+          !channel ||
+          !channel.isTextBased() ||
+          !channel.isSendable() ||
+          !isGuildTextChannel(channel)
+        ) {
+          console.log(
+            'Event reminder skipped: home channel not sendable.',
+          )
+          return
+        }
+
+        try {
+          await sendEventReminder(channel)
+        } catch (err) {
+          console.error('Failed to send event reminder', err)
+        }
+      },
+      null,
+      true,
+      'America/New_York',
+    )
+
+    digestCron = new CronJob(
+      '0 0 9 * * 0',
+      async () => {
+        const channel = client?.channels.cache.get(homeChannelId)
+
+        if (
+          !channel ||
+          !channel.isTextBased() ||
+          !channel.isSendable() ||
+          !isGuildTextChannel(channel)
+        ) {
+          console.log(
+            'Upcoming events digest skipped: home channel not sendable.',
+          )
+          return
+        }
+
+        try {
+          await sendUpcomingEventsAnnouncement(channel)
+        } catch (err) {
+          console.error('Failed to send upcoming events digest', err)
+        }
+      },
+      null,
+      true,
+      'America/New_York',
     )
   })
 
@@ -167,6 +230,38 @@ If you WANT to support is other ways, please see our NEW supporter link: https:/
       }
     }
 
+    if (
+      message.content === '!testreminder' &&
+      message.author.id === '185862369174487040'
+    ) {
+      const channel = message.channel
+
+      if (
+        channel &&
+        channel.isTextBased() &&
+        channel.isSendable() &&
+        isGuildTextChannel(channel)
+      ) {
+        await sendEventReminder(channel)
+      }
+    }
+
+    if (
+      message.content === '!testevents' &&
+      message.author.id === '185862369174487040'
+    ) {
+      const channel = message.channel
+
+      if (
+        channel &&
+        channel.isTextBased() &&
+        channel.isSendable() &&
+        isGuildTextChannel(channel)
+      ) {
+        await sendUpcomingEventsAnnouncement(channel)
+      }
+    }
+
     if (containsCIA(message.content)) {
       message.react('👀')
     }
@@ -216,8 +311,12 @@ If you WANT to support is other ways, please see our NEW supporter link: https:/
 export async function stopDiscordBot(): Promise<void> {
   engagementCron?.stop()
   supportCron?.stop()
+  reminderCron?.stop()
+  digestCron?.stop()
   engagementCron = undefined
   supportCron = undefined
+  reminderCron = undefined
+  digestCron = undefined
 
   if (client) {
     await client.destroy()

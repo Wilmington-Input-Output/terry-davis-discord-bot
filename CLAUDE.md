@@ -29,9 +29,11 @@ Startup order (`server.ts` `main()`): register `bankWebhook` → register `donat
 
 ### `discordBot/` — the Discord client and engagement behavior
 
-- **`index.ts`** — owns the client lifecycle as module-level singletons (`client`, `engagementCron`, `supportCron`) and exports `startDiscordBot()`, `stopDiscordBot()`, and `getClient()`. `getClient()` is the seam other modules (e.g. `announce.ts`) use to post messages. Intents: Guilds, GuildMessages, MessageContent, GuildMembers, GuildMessageReactions. Registers `ClientReady`, `MessageCreate`, `GuildMemberAdd`, `Error`, `ShardError` handlers, then schedules two crons inside `ClientReady`:
+- **`index.ts`** — owns the client lifecycle as module-level singletons (`client`, `engagementCron`, `supportCron`, `reminderCron`, `digestCron`) and exports `startDiscordBot()`, `stopDiscordBot()`, and `getClient()`. `getClient()` is the seam other modules (e.g. `announce.ts`) use to post messages. Intents: Guilds, GuildMessages, MessageContent, GuildMembers, GuildMessageReactions, GuildScheduledEvents. Registers `ClientReady`, `MessageCreate`, `GuildMemberAdd`, `Error`, `ShardError` handlers, then schedules four crons inside `ClientReady`:
   - `0 29 18 * * 2,4,6` — Tue/Thu/Sat at 18:29 server-local time. 50/50 coin flip between `sendOpenEndedQuestion` and `sendMultipleChoiceQuestion`.
   - `0 0 12 * * 0` — Sunday at 12:00 server-local time. Posts the static Buy Me a Coffee support message.
+  - `0 0 11 * * *` — Daily at 11:00 AM America/New_York time. Posts an event reminder for the next upcoming Discord Scheduled Event if it is today, tomorrow, or exactly 3 days away; posts nothing for 2-day or 4+-day gaps.
+  - `0 0 9 * * 0` — Sunday at 9:00 AM America/New_York time. Posts a weekly digest listing all upcoming Discord Scheduled Events within the next 28 days; posts nothing if the window is empty.
   - Cron times use the server's local TZ (no `timeZone` arg is passed to `CronJob`). Pass `timeZone` as the 5th `CronJob` arg if a specific zone is needed.
   - The startup "bot is online" reply to the home channel is intentionally **commented out** — don't re-enable it without reason.
   - A `GuildMemberAdd` handler posts a welcome message (mentioning the new member) to `HOME_CHANNEL_ID` when a non-bot user joins. Built via the shared `buildWelcomeMessage(userId)` helper; relies on the already-enabled `GuildMembers` intent.
@@ -39,6 +41,7 @@ Startup order (`server.ts` `main()`): register `bankWebhook` → register `donat
 - **`engagement/`** — posts engagement prompts:
   - `multipleChoice.ts` — posts a question with 🇦/🇧/🇨/🇩 reactions, attaches a 48-hour `ReactionCollector`, and on the **second unique reactor** sends a follow-up asking why they chose that answer, then stops the collector. A module-level `lastEngagementIndices` array avoids repeating questions until all have been used; this state is **in-memory only** and resets on restart.
   - `openEnded.ts` — picks a question and 50/50 either posts plain or tags 3 random non-bot guild members via `getRandomMembers`.
+- **`events/eventReminder.ts`** — scheduled event reminders and digests. Exports `sendEventReminder(channel)` (daily reminder for the soonest upcoming event if today/tomorrow/3-day window) and `sendUpcomingEventsAnnouncement(channel)` (weekly Sunday digest of next 28 days). Both run in America/New_York time. Use `!testreminder` and `!testevents` to trigger on demand.
 - **`messages/`** — pure data modules: `replies.ts` (Terry Davis quotes for `!terry`), `engagement.ts` (multiple-choice Q&A pairs), `openEndedEngagement.ts` (open-ended question strings). Adding content = appending to these arrays; no other wiring needed.
 - **`utils/`** — `channels.ts` exports the `isGuildTextChannel` type guard used before any `send` that needs a `TextChannel`-shaped channel; `members.ts` exports `getRandomMembers`, which calls `guild.members.fetch()` (requires the `GuildMembers` intent — enabled).
 
@@ -61,6 +64,8 @@ Defined inline in the `MessageCreate` handler in `discordBot/index.ts`:
 - `!meetup` → posts `https://wilmingtonio.org/`.
 - `!test` → triggers the engagement cron branch immediately, **owner-gated** by hardcoded Discord user ID `185862369174487040`. Gate similar debug commands the same way.
 - `!testwelcome` → posts the new-member welcome message (mentioning the sender) for manual verification without waiting for a real join, **owner-gated** by the same user ID.
+- `!testreminder` → triggers the daily event reminder immediately, **owner-gated** by the same user ID.
+- `!testevents` → triggers the weekly digest immediately, **owner-gated** by the same user ID.
 - Any message matching `/\bCIA\b/i` gets a 👀 reaction.
 - Message from user `1032407444523077712` → 🇫🇷 reaction.
 - Message from user `193846431004622848` or `314929056422297602` → 🇦🇱 reaction.
