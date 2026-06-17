@@ -131,15 +131,15 @@ function buildReminder(
 
   const name = `**${event.name}**`
   const time = formatTime(startTs)
-  const bell = '🔔 REMINDER!!! 🔔'
+  const bell = '🔔 REMINDER!!! 🔔\n\n'
 
   let headline: string
 
   if (gap === 0) {
-    headline = `@here ${bell} Today at ${time} is our ${name}!!!`
+    headline = `@here ${bell} Today at ${time} is our ${name}!!!\n`
   } else if (gap === 1) {
     headline =
-      `@here ${bell} **TOMORROW** at ${time} is our ${name}!!!`
+      `@here ${bell} **TOMORROW** at ${time} is our ${name}!!!\n`
   } else if (gap === 3) {
     const weekday = formatWeekday(startTs)
     headline =
